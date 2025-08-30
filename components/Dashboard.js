@@ -1,181 +1,141 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from './Layout';
 import ControlPanel from './ControlPanel';
 import QuestionCard from './QuestionCard';
-
-function generateId() {
-  return Date.now() + Math.random();
-}
 
 export default function Dashboard() {
   const [questions, setQuestions] = useState([]);
   const [currentLayout, setCurrentLayout] = useState('grid-2');
   const [refreshInterval, setRefreshInterval] = useState(0);
-  const [refreshTimer, setRefreshTimer] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Load questions from localStorage on mount
+  const questionsRef = useRef(questions);
+  const intervalRef = useRef(null);
+
+  // Utility to generate unique IDs
+  const generateId = () => crypto.randomUUID();
+
+  // Update questionsRef whenever questions change
   useEffect(() => {
-    const saved = localStorage.getItem('chatgpt-dashboard-questions');
-    if (saved) {
-      try {
-        const parsedQuestions = JSON.parse(saved);
-        setQuestions(parsedQuestions.map(q => ({ ...q, loading: false })));
-      } catch (error) {
-        console.error('Failed to load saved questions:', error);
+    questionsRef.current = questions;
+  }, [questions]);
+
+  // Load initial data from localStorage
+  useEffect(() => {
+    try {
+      const savedQuestions = localStorage.getItem('chatgpt-dashboard-questions');
+      if (savedQuestions && savedQuestions.trim() !== '') {
+        const parsed = JSON.parse(savedQuestions);
+        setQuestions(parsed.map(q => ({ ...q, loading: false })));
       }
-    }
 
-    const savedLayout = localStorage.getItem('chatgpt-dashboard-layout');
-    if (savedLayout) {
-      setCurrentLayout(savedLayout);
-    }
+      const savedLayout = localStorage.getItem('chatgpt-dashboard-layout');
+      if (savedLayout) setCurrentLayout(savedLayout);
 
-    const savedRefreshInterval = localStorage.getItem('chatgpt-dashboard-refresh');
-    if (savedRefreshInterval) {
-      setRefreshInterval(parseInt(savedRefreshInterval));
+      const savedRefresh = localStorage.getItem('chatgpt-dashboard-refresh');
+      if (savedRefresh) setRefreshInterval(parseInt(savedRefresh, 10));
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
     }
   }, []);
 
-  // Save questions to localStorage
+  // Persist questions, layout, and refresh interval
   useEffect(() => {
     localStorage.setItem('chatgpt-dashboard-questions', JSON.stringify(questions));
   }, [questions]);
 
-  // Save layout preference
   useEffect(() => {
     localStorage.setItem('chatgpt-dashboard-layout', currentLayout);
   }, [currentLayout]);
 
-  // Save refresh interval preference
   useEffect(() => {
     localStorage.setItem('chatgpt-dashboard-refresh', refreshInterval.toString());
   }, [refreshInterval]);
 
   // Ask ChatGPT API
-  const askChatGPT = useCallback(async (questionId, questionText, model) => {
-    setQuestions(prev => prev.map(q => 
-      q.id === questionId 
-        ? { ...q, loading: true, error: null }
-        : q
+  const askChatGPT = useCallback(async (id, questionText, model) => {
+    setQuestions(prev => prev.map(q =>
+      q.id === id ? { ...q, loading: true, error: null } : q
     ));
 
     try {
-      const response = await fetch('/api/chat', {
+      const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: questionText,
-          model: model
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: questionText, model }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to get response');
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to get response');
-      }
-
-      setQuestions(prev => prev.map(q => 
-        q.id === questionId 
-          ? { 
-              ...q, 
-              loading: false, 
-              answer: data.answer,
-              error: null,
-              usage: data.usage
-            }
-          : q
+      setQuestions(prev => prev.map(q =>
+        q.id === id ? { ...q, loading: false, answer: data.answer, usage: data.usage, error: null } : q
       ));
-
-    } catch (error) {
-      setQuestions(prev => prev.map(q => 
-        q.id === questionId 
-          ? { 
-              ...q, 
-              loading: false, 
-              error: error.message
-            }
-          : q
+    } catch (err) {
+      setQuestions(prev => prev.map(q =>
+        q.id === id ? { ...q, loading: false, error: err.message } : q
       ));
     }
   }, []);
 
   // Add new question
   const addQuestion = useCallback((questionText, model) => {
-    const newQuestion = {
+    const newQ = {
       id: generateId(),
       question: questionText,
       answer: null,
       loading: false,
       error: null,
-      model: model,
+      model,
       timestamp: Date.now()
     };
-
-    setQuestions(prev => [...prev, newQuestion]);
-    askChatGPT(newQuestion.id, questionText, model);
+    setQuestions(prev => [...prev, newQ]);
+    askChatGPT(newQ.id, questionText, model);
   }, [askChatGPT]);
 
-  // Refresh question
-  const refreshQuestion = useCallback((questionId) => {
-    const question = questions.find(q => q.id === questionId);
-    if (question && !question.loading) {
-      askChatGPT(questionId, question.question, question.model);
-    }
-  }, [questions, askChatGPT]);
+  // Refresh a single question
+  const refreshQuestion = useCallback((id) => {
+    const q = questionsRef.current.find(q => q.id === id);
+    if (q && !q.loading) askChatGPT(id, q.question, q.model);
+  }, [askChatGPT]);
 
   // Remove question
-  const removeQuestion = useCallback((questionId) => {
-    setQuestions(prev => prev.filter(q => q.id !== questionId));
+  const removeQuestion = useCallback((id) => {
+    setQuestions(prev => prev.filter(q => q.id !== id));
   }, []);
 
-  // Auto refresh functionality
+  // Auto-refresh effect
   useEffect(() => {
-    if (refreshTimer) {
-      clearInterval(refreshTimer);
-    }
+    if (intervalRef.current) clearInterval(intervalRef.current);
 
     if (refreshInterval > 0) {
-      const timer = setInterval(() => {
+      intervalRef.current = setInterval(() => {
         setIsRefreshing(true);
-        questions.forEach(question => {
-          if (!question.loading) {
-            askChatGPT(question.id, question.question, question.model);
-          }
+        questionsRef.current.forEach(q => {
+          if (!q.loading) askChatGPT(q.id, q.question, q.model);
         });
         setTimeout(() => setIsRefreshing(false), 3000);
       }, refreshInterval);
-
-      setRefreshTimer(timer);
     }
 
     return () => {
-      if (refreshTimer) {
-        clearInterval(refreshTimer);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [refreshInterval, questions, askChatGPT]);
+  }, [refreshInterval, askChatGPT]);
 
-  // Handle refresh interval change
+  // Refresh interval handler
   const handleRefreshIntervalChange = useCallback((interval) => {
     setRefreshInterval(interval);
   }, []);
 
-  // Get loading questions count
   const loadingCount = questions.filter(q => q.loading).length;
-  const totalQuestions = questions.length;
 
   return (
     <Layout title="ChatGPT Dynamic Dashboard">
-      {/* Header */}
       <div className="glass-card header">
         <h1>🤖 ChatGPT Dynamic Dashboard</h1>
       </div>
 
-      {/* Control Panel */}
       <ControlPanel
         onAddQuestion={addQuestion}
         onLayoutChange={setCurrentLayout}
@@ -184,7 +144,6 @@ export default function Dashboard() {
         refreshInterval={refreshInterval}
       />
 
-      {/* Questions Grid */}
       <div className={`questions-grid ${currentLayout}`}>
         {questions.length === 0 ? (
           <div className="white-card empty-state">
@@ -193,10 +152,10 @@ export default function Dashboard() {
             <div style={{ fontSize: '3em', margin: '20px 0' }}>🚀</div>
           </div>
         ) : (
-          questions.map(question => (
+          questions.map(q => (
             <QuestionCard
-              key={question.id}
-              question={question}
+              key={q.id}
+              question={q}
               onRefresh={refreshQuestion}
               onRemove={removeQuestion}
             />
@@ -204,20 +163,18 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Status Bar */}
       <div className="glass-card status-bar">
         <div className="status-item">
           <span>Status:</span>
           <span>
             {loadingCount > 0 
               ? `Processing ${loadingCount} question${loadingCount > 1 ? 's' : ''}...` 
-              : 'All questions updated'
-            }
+              : 'All questions updated'}
           </span>
         </div>
         <div className="status-item">
           <span>Total Questions:</span>
-          <span>{totalQuestions}</span>
+          <span>{questions.length}</span>
         </div>
         {refreshInterval > 0 && (
           <div className="status-item">
@@ -227,7 +184,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Refresh Indicator */}
       <div className={`refresh-indicator ${isRefreshing ? 'show' : ''}`}>
         <div className="spinner"></div>
         Auto-refreshing questions...
