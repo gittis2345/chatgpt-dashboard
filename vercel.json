@@ -1,15 +1,10 @@
 {
-  "name": "chatgpt-dashboard",
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "functions": {
     "pages/api/chat.js": {
       "maxDuration": 30
+    },
+    "pages/api/health.js": {
+      "maxDuration": 10
     }
   }
 }
