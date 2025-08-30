@@ -2,9 +2,6 @@
   "functions": {
     "pages/api/chat.js": {
       "maxDuration": 30
-    },
-    "pages/api/health.js": {
-      "maxDuration": 10
     }
   }
 }
