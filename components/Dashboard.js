@@ -172,4 +172,66 @@ export default function Dashboard() {
     <Layout title="ChatGPT Dynamic Dashboard">
       {/* Header */}
       <div className="glass-card header">
-        <h1>🤖
+        <h1>🤖 ChatGPT Dynamic Dashboard</h1>
+      </div>
+
+      {/* Control Panel */}
+      <ControlPanel
+        onAddQuestion={addQuestion}
+        onLayoutChange={setCurrentLayout}
+        onRefreshIntervalChange={handleRefreshIntervalChange}
+        currentLayout={currentLayout}
+        refreshInterval={refreshInterval}
+      />
+
+      {/* Questions Grid */}
+      <div className={`questions-grid ${currentLayout}`}>
+        {questions.length === 0 ? (
+          <div className="white-card empty-state">
+            <h3>Welcome to ChatGPT Dashboard! 🎉</h3>
+            <p>Add your first question above to get started.</p>
+            <div style={{ fontSize: '3em', margin: '20px 0' }}>🚀</div>
+          </div>
+        ) : (
+          questions.map(question => (
+            <QuestionCard
+              key={question.id}
+              question={question}
+              onRefresh={refreshQuestion}
+              onRemove={removeQuestion}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Status Bar */}
+      <div className="glass-card status-bar">
+        <div className="status-item">
+          <span>Status:</span>
+          <span>
+            {loadingCount > 0 
+              ? `Processing ${loadingCount} question${loadingCount > 1 ? 's' : ''}...` 
+              : 'All questions updated'
+            }
+          </span>
+        </div>
+        <div className="status-item">
+          <span>Total Questions:</span>
+          <span>{totalQuestions}</span>
+        </div>
+        {refreshInterval > 0 && (
+          <div className="status-item">
+            <span>Auto-refresh:</span>
+            <span>Every {refreshInterval / 1000}s</span>
+          </div>
+        )}
+      </div>
+
+      {/* Refresh Indicator */}
+      <div className={`refresh-indicator ${isRefreshing ? 'show' : ''}`}>
+        <div className="spinner"></div>
+        Auto-refreshing questions...
+      </div>
+    </Layout>
+  );
+}
