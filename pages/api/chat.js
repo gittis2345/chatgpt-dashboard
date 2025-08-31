@@ -31,7 +31,7 @@ export default async function handler(req, res) {
           }
         ],
 //        max_completion_tokens: , // Higher for premium models
-        temperature: 0.7
+//        temperature: 0.7
       })
     });
 
