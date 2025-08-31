@@ -30,7 +30,7 @@ export default async function handler(req, res) {
             content: question
           }
         ],
-        max_tokens: 1000, // Higher for premium models
+        max_completion_tokens: , // Higher for premium models
         temperature: 0.7
       })
     });
