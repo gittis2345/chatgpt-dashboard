@@ -8,7 +8,7 @@ export default function ControlPanel({
   refreshInterval 
 }) {
   const [question, setQuestion] = useState('');
-  const [model, setModel] = useState('gpt-3.5-turbo');
+  const [model, setModel] = useState('gpt-5-chat-latest');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -36,19 +36,20 @@ export default function ControlPanel({
   return (
     <div className="white-card control-panel">
       <div className="control-group">
-        <div className="form-group">
-          <label>Model:</label>
-          <select 
-            className="form-select"
-            value={model}
-            onChange={(e) => setModel(e.target.value)}
-          >
-        <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Recommended)</option>
-        <option value="gpt-4o-mini">GPT-4o Mini</option>
-        <option value="gpt-4o">GPT-4o (Requires Access)</option>
-          </select>
-        </div>
-        
+       <div className="form-group">
+        <label>Model:</label>
+   <select 
+    className="form-select"
+    value={model}
+    onChange={(e) => setModel(e.target.value)}
+  >
+    <option value="gpt-5-chat-latest">GPT-5 Chat Latest ⭐</option>
+    <option value="gpt-5-2025-08-07">GPT-5 (Aug 2025) 🔥</option>
+    <option value="gpt-5-mini">GPT-5 Mini ⚡</option>
+    <option value="gpt-5-nano">GPT-5 Nano 💎</option>
+    <option value="o4-mini-deep-research-2025-06-26">O4 Mini Deep Research 🧠</option>
+  </select>
+</div>
         <div className="form-group">
           <label>Auto Refresh:</label>
           <select 
