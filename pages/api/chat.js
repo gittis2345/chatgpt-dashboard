@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const { question, model = 'gpt-3.5-turbo' } = req.body;
+  const { question, model = 'gpt-5' } = req.body;
 
   if (!question) {
     return res.status(400).json({ message: 'Question is required' });
