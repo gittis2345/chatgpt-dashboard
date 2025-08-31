@@ -43,8 +43,9 @@ export default function ControlPanel({
             value={model}
             onChange={(e) => setModel(e.target.value)}
           >
-            <option value="gpt-4">GPT-4</option>
-            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+        <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Recommended)</option>
+        <option value="gpt-4o-mini">GPT-4o Mini</option>
+        <option value="gpt-4o">GPT-4o (Requires Access)</option>
           </select>
         </div>
         
